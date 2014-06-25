@@ -1,11 +1,11 @@
 package com.github.sarxos.winreg.internal;
 
-import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import com.github.sarxos.winreg.HKey;
@@ -19,8 +19,11 @@ import com.github.sarxos.winreg.HKey;
  * (http://lenkite.blogspot.fr/2008/05/access-windows-registry-using-java.html).
  * 
  * @author Bartosz Firyn (sarxos)
+ * @author Yunqi Ouyang (oyyq99999)
  */
 public final class ReflectedMethods {
+
+	private static final Logger LOG = Logger.getLogger(ReflectedMethods.class.getName());
 
 	private static final Class<?> IC = int.class;
 	private static final Class<?> BAC = byte[].class;
@@ -68,10 +71,18 @@ public final class ReflectedMethods {
 	}
 
 	public static Map<String, String> readStringValues(Preferences root, int hkey, String key, String charsetName) throws Exception {
+
 		int[] handles = keyOpen(root, hkey, key, HKeyAccess.READ);
-		int[] keyInfo = (int[]) invoke(QUERY_INFO_KEY, root, handles[0]);
-		int count = keyInfo[2]; // count
-		int maxlen = keyInfo[3]; // value length max
+		int[] info = (int[]) invoke(QUERY_INFO_KEY, root, handles[0]);
+
+		// info[0] = number of values which can be read
+		// info[1] = ??
+		// info[2] = number of all value entries in given key
+		// info[3] = maximum string length from all the values
+
+		int count = info[0];
+		int maxlen = info[3];
+
 		HashMap<String, String> results = new HashMap<String, String>();
 		for (int index = 0; index < count; index++) {
 			byte[] name = (byte[]) invoke(ENUM_VALUE, root, handles[0], index, maxlen + 1);
@@ -84,10 +95,18 @@ public final class ReflectedMethods {
 	}
 
 	public static List<String> readStringSubKeys(Preferences root, int hkey, String key, String charsetName) throws Exception {
+
 		int[] handles = keyOpen(root, hkey, key, HKeyAccess.READ);
 		int[] info = (int[]) invoke(QUERY_INFO_KEY, root, handles[0]);
-		int count = info[0]; // count
-		int maxlen = info[3]; // value length max
+
+		// info[0] = number of keys which can be read
+		// info[1] = ??
+		// info[2] = number of all keys in given key
+		// info[3] = maximum string length from all the key names
+
+		int count = info[0];
+		int maxlen = info[3];
+
 		List<String> results = new ArrayList<String>();
 		for (int index = 0; index < count; index++) {
 			byte[] name = (byte[]) invoke(ENUM_KEY_EX, root, handles[0], index, maxlen + 1);
